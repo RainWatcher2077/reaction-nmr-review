@@ -1,0 +1,4 @@
+interface:
+  display_name: "反应产物与副产物结构核对"
+  short_description: "Review reaction products and unknown byproducts using NMR"
+  default_prompt: "使用 $reaction-nmr-review，根据我的反应与谱图资料开展分阶段多 agent 结构核对，并保留证据和分歧。"

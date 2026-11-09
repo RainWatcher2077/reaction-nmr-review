@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ailsa_home=${AILSA_HOME:-"$HOME/.local/share/reaction-nmr-review/ailsa"}
+if [[ ! -x "$ailsa_home/.venv/bin/ailsa" ]]; then
+    printf 'AILSA CLI not found at %s\n' "$ailsa_home/.venv/bin/ailsa" >&2
+    printf 'Set AILSA_HOME to an installed checkout or follow the runtime setup guide.\n' >&2
+    exit 1
+fi
+ailsa_home=$(cd -- "$ailsa_home" && pwd -P)
+lsd_dir=${LSD_BIN_DIR:-"$ailsa_home/.local/LSD-3.5.3"}
+export PATH="$lsd_dir:$ailsa_home/.venv/bin:$PATH"
+# The upstream lookup variable retains the original toolkit name.
+export LUCY_DATABASE=${LUCY_DATABASE:-"$ailsa_home/data/reference/ailsa-derep.db"}
+exec "$ailsa_home/.venv/bin/ailsa" "$@"

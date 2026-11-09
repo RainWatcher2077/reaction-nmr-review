@@ -1,0 +1,44 @@
+# Full CASE workflow under Codex
+
+## Scientific source files
+
+All paths below are relative to the verified upstream AILSA checkout (`AILSA_HOME` when using the bundled launcher). The table uses the layout in the [documented baseline](https://github.com/RainWatcher2077/reaction-nmr-review/blob/main/docs/ailsa-runtime.md). Read the coordinator source for full CASE, and give each specialist its relevant source file. These files contain domain procedures, not native Codex tool calls:
+
+| Role / purpose | File |
+|---|---|
+| Coordinator, iteration rules, coverage and identity gates | `.claude/commands/lucy-ng/case.md` |
+| Peak picking, experiment interpretation, statistical detection | `.claude/agents/lucy-nmr-chemist.md` |
+| LSD constraints, inventory, iteration and union conversion | `.claude/agents/lucy-lsd-engineer.md` |
+| Independent pre-solver and post-solution review | `.claude/agents/lucy-devils-advocate.md` |
+| Candidate ranking and deterministic identity | `.claude/agents/lucy-solution-analyst.md` |
+| Repeated zero solutions, explosions, constraint conflicts | `.claude/agents/lucy-diagnostic.md` |
+| Progress format and loop advisories when needed | `.claude/commands/lucy-ng/references/` |
+
+## Translate the runtime before using the sources
+
+- Replace every legacy `lucy` CLI invocation with the stable `ailsa` executable in `SKILL.md`. Use `--help` to resolve stale paths or flags; do not install the old package.
+- Ignore Claude frontmatter permissions, model pins, Claude command names and `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. Do not enable Claude settings or reproduce `TeamCreate`, `TeamDelete`, or `Task*` calls.
+- The current Codex agent is coordinator. Use `collaboration.spawn_agent` for specialist work, `send_message` for an active specialist, and `followup_task` to assign work to an idle specialist. Await results before advancing dependent stages. Never rely on a file/task ledger to wake agents.
+- Fit specialists to available slots: peak-picking first; engineer plus independent reviewer next; analyst after candidate generation. Reuse specialists where practical. Do not spawn four simultaneously when the session cannot support them. Inherit the session model; disclose actual model information only when available, without guessing.
+- Give each agent explicit data/output paths, formula, permitted writes, dependencies and expected artifacts. Coordinator alone writes `CASE-PROGRESS.md`; agents send structured evidence and validation results. The engineer owns solver files, the reviewer does not modify them, and the chemist does not run the solver.
+- If independent review is unavailable, report that limitation and do not describe an unreviewed solver iteration as validated or a complete team workflow.
+
+For `lsd run <file> --output-dir <directory>`, create the output directory first and pass absolute input/output paths: this file-based runner does not create the directory, and relative paths can fail after its working-directory switch. Use `--format json` and inspect `success`, solution counts and artifacts; CLI exit 0 alone does not establish success. Conversely, the raw LSD process can return 1 on a successful solve, so do not reject a run solely on that raw code.
+
+On the documented baseline, use `lsd rank --shifts` with an independently reviewed list of measured `13C` shifts. The baseline's `--spectrum` path can fail while reading the peak-list object. Check `lsd rank --help` for the syntax.
+
+## Evidence and iteration contracts
+
+1. Check readiness using `SKILL.md`. Distinguish core CLI/LSD/prediction readiness from statistical-detection readiness. The installed official schema-3 database supports a **restricted CASE** mode without statistical priors; do not block an otherwise adequate evidence-driven CASE solely on that limitation, and do not force migrations or fake detection data. Inventory the actual experiments, processing quality, nuclei, solvent/reference and formula/DBE. CASE needs adequate 13C/HSQC/HMBC connectivity evidence. Read formula-only sidecars before asking the user. In blind runs, do not read `.planning`, benchmark truth manifests, molecule/identity files, answer keys or identity-bearing memory. Keep formula and spectral evidence separate from known sample labels.
+2. Chemist reads its source and extracts signed DEPT, HSQC, HMBC and available COSY evidence, plus symmetry checks. Apply statistical detection only when the required schema and genuine data are available. In restricted mode, override the source's mandatory-detection directions: disable all database-derived hybridisation, neighbour, HHB and ring priors; never interpret `has_data: false`, absent fields or default zeros as frequency zero/forbidden connectivity. Preserve the chemistry-first hierarchy: clean DEPT/edited-HSQC evidence outranks statistical priors. Record actual raw tool values without renormalizing frequencies. Detection alone must not force heteroatom placement. Separate low-confidence correlations, 1J leakage and possible 4J correlations rather than silently hard-coding them.
+3. Engineer reads its source and builds each `iteration_NN/compound.lsd` from the immediately preceding file and its explicit constraint inventory. Preserve every prior constraint unless a documented, evidence-based change is independently reviewed. Carry ring exclusions, grouped/equivalent atoms and COSY constraints forward. Add high-confidence HMBC constraints incrementally (normally 3–5); do not reconstruct previous constraints from memory.
+4. **Before every solver run**, independent reviewer reads the exact proposed LSD file, the inventory, spectra/assignments and previous iteration. Check hydrogen/DBE/sp2 budgets, multiplicity, symmetry, constraint persistence and evidence for all additions/removals. Save the verdict with the reviewed file identity. Run the solver only after a passing review of that file; editing it invalidates that approval. Keep solver stdout/stderr, solution counts and raw outputs. Huge conversion jobs must not hide the solver's completion status.
+5. When multiplicity is ambiguous, maintain a ledger of viable whole-molecule CH/CH2/CH3 families and reviewer-mandated alternative models. Each needs an actual solver search in its own directory; a zero-solution search still counts. Canonicalize/deduplicate candidate SMILES across the searched families before ranking the union. **Coverage is independent of MAE:** a good score never excuses a missing viable family or reviewer alternative. Document any enumeration cap/truncation and remaining unsearched families; such a run cannot claim exhaustive coverage. Preserve this gate when a report already exists and reopen searches if necessary.
+6. Analyst reads its source, ranks against the measured 13C shifts and checks formula, connectivity, chemical plausibility, prediction coverage and per-atom discrepancies. Derive identity with `identify` before assigning a trivial name. Reviewer independently checks reported name versus structure without repeating `identify`; an unavailable or flagged name review is disclosed and the name stays tentative. Report actual structures/SMILES even when naming is unresolved.
+7. Stop unproductive loops honestly. Use coordinator loop patterns: request diagnostic review after two failed interventions on the same solver pattern; do not escalate ELIM beyond 3 to conceal a constraint conflict. At ten failed interventions of the same pattern, stop and provide the unresolved state and evidence. A persistent high-MAE quality problem gets one peak-picking/assumption re-examination, then a provisional result or request for additional experiments. Respect shorter user limits. Ten ordinary solver iterations is a checkpoint to rank/report with caveats, not permission to bypass review or coverage.
+
+## Durable outputs
+
+Use a per-run analysis directory containing `CASE-PROGRESS.md`, the measured/picked evidence, inventory, immutable iteration files and reviews, solver logs, ranked candidate union and `final_results.md`. Include data path, formula, toolkit commit, actual run mode, unresolved coverage and timing. In restricted mode, explicitly record unavailable statistical priors and their exclusion from constraints in both progress and final reports; prediction/ranking/dereplication capability remains separate. If using the optional dashboard, create its `.run_manifest.json` per the coordinator source so spectra resolve correctly; do not start a persistent dashboard merely for a status check.
+
+On completion or failure, report the achieved stage precisely (readiness, component smoke, one iteration, or complete CASE). A test on a named bundled example proves execution, not blinded identification accuracy. Release only resources started for this run and follow the user's current session/power instructions.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "AILSA NMR 辅助解析"
+  short_description: "用 AILSA 解析 NMR 数据、审核结构约束并排序候选结构"
+  default_prompt: "使用 $ailsa-nmr 检查环境，并根据我的 NMR 数据与分子式进行结构解析。"
