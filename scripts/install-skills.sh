@@ -23,6 +23,11 @@ for skill in "${skills[@]}"; do
   fi
 done
 
+if [[ ! -x "$repo_dir/skills/ailsa-nmr/scripts/ailsa" ]]; then
+  printf 'Bundled AILSA launcher is missing or cannot be executed.\n' >&2
+  exit 1
+fi
+
 mkdir -p -- "$skills_dir"
 skills_dir=$(cd -- "$skills_dir" && pwd -P)
 lock_dir="$skills_dir/.reaction-nmr-review-install.lock"
@@ -49,6 +54,9 @@ trap 'exit 143' TERM
 matches_bundle() {
   local source=$1 target=$2 special_files
   [[ -d "$target" && ! -L "$target" ]] || return 1
+  if [[ "$source" == */ailsa-nmr && ! -x "$target/scripts/ailsa" ]]; then
+    return 1
+  fi
   special_files=$(find "$target" ! -type f ! -type d -print) || return 1
   [[ -z "$special_files" ]] && diff -qr -- "$source" "$target" >/dev/null
 }
